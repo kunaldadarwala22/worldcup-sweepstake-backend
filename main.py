@@ -234,6 +234,34 @@ async def compute_sweepstake():
             team_state[champ]["champion"] = True
             team_state[champ]["eliminated"] = False
 
+    # Build "matches today" list with scores + which player owns each team
+    import datetime
+    today_str = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+    matches_today = []
+    for m in matches_sorted:
+        utc_date = m.get("utcDate", "")
+        if not utc_date.startswith(today_str):
+            continue
+        home_name_raw = (m.get("homeTeam") or {}).get("name", "TBD")
+        away_name_raw = (m.get("awayTeam") or {}).get("name", "TBD")
+        home_resolved = resolve_team(home_name_raw)
+        away_resolved = resolve_team(away_name_raw)
+        score = m.get("score", {})
+        full_time = score.get("fullTime", {})
+        status = m.get("status", "SCHEDULED")
+        matches_today.append({
+            "kickoff": utc_date,
+            "stage": m.get("stage"),
+            "stage_label": STAGE_LABELS.get(m.get("stage"), m.get("stage")),
+            "status": status,
+            "home_team": home_name_raw,
+            "away_team": away_name_raw,
+            "home_owner": TEAM_TO_PLAYER.get(home_resolved),
+            "away_owner": TEAM_TO_PLAYER.get(away_resolved),
+            "home_score": full_time.get("home"),
+            "away_score": full_time.get("away"),
+        })
+
     # Build per-player summary
     players_out = {}
     for player, teams in PLAYERS.items():
@@ -260,6 +288,7 @@ async def compute_sweepstake():
         "total_pool": total_pool,
         "currency": "GBP",
         "winner": overall_champion_player["name"] if overall_champion_player else None,
+        "matches_today": matches_today,
         "players": players_out,
     }
 

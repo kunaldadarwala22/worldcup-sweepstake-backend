@@ -79,7 +79,9 @@ STAGE_LABELS = {
 }
 
 
-def normalise(name: str) -> str:
+def normalise(name: Optional[str]) -> str:
+    if not name:
+        return ""
     return name.lower().replace("'", "").replace("’", "").replace("-", " ").replace(".", "").strip()
 
 
@@ -118,7 +120,7 @@ async def fetch_json(client: httpx.AsyncClient, path: str, params: Optional[dict
     return resp.json()
 
 
-def resolve_team(name: str) -> Optional[str]:
+def resolve_team(name: Optional[str]) -> Optional[str]:
     return ALIAS_LOOKUP.get(normalise(name))
 
 
@@ -153,7 +155,8 @@ async def compute_sweepstake():
     for group_table in (standings_data or {}).get("standings", []):
         group_name = group_table.get("group")
         for row in group_table.get("table", []):
-            resolved = resolve_team(row["team"]["name"])
+            row_team_name = (row.get("team") or {}).get("name")
+            resolved = resolve_team(row_team_name)
             if resolved and resolved in team_state:
                 st = team_state[resolved]
                 st["played"] = row.get("playedGames", 0)

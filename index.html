@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The 2026 Sweepstake — KK Mortgage Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pitch-dark: #0b1f17;
+    --pitch-mid: #122b20;
+    --pitch-line: #1d4632;
+    --floodlight: #f5f3e7;
+    --gold: #d4af37;
+    --gold-bright: #f0c94a;
+    --red-card: #c1432f;
+    --muted: #8aa395;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 1200px 600px at 50% -10%, rgba(212,175,55,0.08), transparent 60%),
+      repeating-linear-gradient(0deg, var(--pitch-dark) 0px, var(--pitch-dark) 80px, var(--pitch-mid) 80px, var(--pitch-mid) 160px);
+    color: var(--floodlight);
+    font-family: 'Inter', sans-serif;
+    min-height:100vh;
+  }
+  .display{ font-family:'Bebas Neue', sans-serif; letter-spacing: 0.02em; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  header.hero{
+    position:relative;
+    padding: 64px 24px 48px;
+    text-align:center;
+    border-bottom: 2px solid var(--pitch-line);
+    overflow:hidden;
+  }
+  header.hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: radial-gradient(circle at 50% 0%, transparent 0, transparent 38%, rgba(255,255,255,0.025) 38.5%, transparent 39%);
+    pointer-events:none;
+  }
+  .kicker{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:12px; letter-spacing:0.18em; text-transform:uppercase;
+    color: var(--gold); font-weight:700; margin-bottom:14px;
+  }
+  .kicker::before, .kicker::after{ content:""; width:24px; height:1px; background:var(--gold); opacity:0.6;}
+  h1.title{
+    font-size: clamp(48px, 9vw, 96px);
+    line-height: 0.95;
+    margin: 0;
+    color: var(--floodlight);
+    text-shadow: 0 0 40px rgba(212,175,55,0.15);
+  }
+  h1.title .accent{ color: var(--gold-bright); }
+  .subtitle{ color: var(--muted); font-size:16px; margin-top:14px; max-width:520px; margin-left:auto; margin-right:auto; }
+
+  .pot-strip{
+    display:flex; justify-content:center; gap:40px; flex-wrap:wrap;
+    margin-top:36px;
+  }
+  .pot-stat{ text-align:center; }
+  .pot-stat .num{ font-family:'Bebas Neue'; font-size:40px; color:var(--gold-bright); line-height:1; }
+  .pot-stat .lbl{ font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-top:4px; }
+
+  .scoreboard{
+    max-width: 720px; margin: 36px auto 0; padding: 16px 24px;
+    background: rgba(0,0,0,0.35); border:1px solid var(--pitch-line);
+    border-radius: 6px;
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    font-family:'JetBrains Mono'; font-size:13px; color: var(--muted);
+  }
+  .live-dot{ width:8px; height:8px; border-radius:50%; background:#3ddc84; box-shadow:0 0 8px #3ddc84; animation: pulse 1.6s infinite; flex-shrink:0;}
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  main{ max-width: 1180px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  .section-label{
+    display:flex; align-items:center; gap:14px; margin-bottom:24px;
+  }
+  .section-label .num{ font-family:'Bebas Neue'; font-size:22px; color:var(--gold); border:1px solid var(--gold); border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .section-label h2{ font-family:'Bebas Neue'; font-size:28px; letter-spacing:0.04em; margin:0; }
+  .section-label .line{ flex:1; height:1px; background:var(--pitch-line); }
+
+  .champion-banner{
+    display:none;
+    background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04));
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    padding: 28px 32px;
+    text-align:center;
+    margin-bottom: 48px;
+  }
+  .champion-banner.show{ display:block; }
+  .champion-banner .trophy{ font-size:40px; }
+  .champion-banner .name{ font-family:'Bebas Neue'; font-size:42px; color:var(--gold-bright); margin: 6px 0;}
+  .champion-banner .detail{ color:var(--muted); font-size:14px; }
+
+  .players-grid{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 20px; margin-bottom: 56px;
+  }
+  .player-card{
+    background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.005));
+    border: 1px solid var(--pitch-line);
+    border-radius: 10px;
+    padding: 22px;
+    position:relative;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+  .player-card:hover{ border-color: rgba(212,175,55,0.4); transform: translateY(-2px); }
+  .player-card.leader{ border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 10px 30px -10px rgba(212,175,55,0.3); }
+  .player-card.champion{ border-color: var(--gold-bright); }
+
+  .player-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+  .player-name{ font-family:'Bebas Neue'; font-size:26px; letter-spacing:0.02em; }
+  .player-badge{
+    font-size:10px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700;
+    padding: 4px 9px; border-radius: 100px;
+    background: rgba(255,255,255,0.06); color: var(--muted);
+  }
+  .player-badge.gold{ background: rgba(212,175,55,0.2); color: var(--gold-bright); }
+
+  .alive-meter{ display:flex; gap:3px; margin-bottom:16px; }
+  .alive-meter .seg{ flex:1; height:5px; border-radius:3px; background: rgba(255,255,255,0.08); }
+  .alive-meter .seg.alive{ background: #3ddc84; }
+  .alive-meter .seg.out{ background: var(--red-card); opacity:0.55; }
+
+  .team-list{ display:flex; flex-direction:column; gap:6px; }
+  .team-row{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size: 13.5px; padding: 7px 10px; border-radius:6px;
+    background: rgba(255,255,255,0.02);
+  }
+  .team-row.eliminated{ opacity: 0.4; }
+  .team-row.eliminated .team-name{ text-decoration: line-through; text-decoration-color: var(--red-card); }
+  .team-row.champion-team{ background: rgba(212,175,55,0.14); }
+  .team-name{ font-weight:500; }
+  .team-stage{ font-size: 10.5px; color: var(--muted); font-family:'JetBrains Mono'; }
+  .team-row.eliminated .team-stage{ color: var(--red-card); }
+  .team-row.champion-team .team-stage{ color: var(--gold-bright); }
+
+  footer{
+    text-align:center; padding: 32px 24px 48px; color: var(--muted); font-size:12.5px;
+    border-top: 1px solid var(--pitch-line);
+  }
+  footer a{ color: var(--gold); text-decoration:none; }
+
+  .loading, .error-box{
+    text-align:center; padding: 60px 20px; color: var(--muted);
+  }
+  .error-box{ color: #e8978a; }
+  .skeleton{ animation: shimmer 1.4s infinite; opacity:0.5; }
+  @keyframes shimmer{ 0%,100%{opacity:0.3;} 50%{opacity:0.7;} }
+
+  @media (max-width: 600px){
+    .pot-strip{ gap:24px; }
+    .scoreboard{ flex-wrap:wrap; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="kicker">KK Mortgage Solutions · Private Sweepstake</div>
+  <h1 class="title">FIFA WORLD CUP <span class="accent">2026</span></h1>
+  <p class="subtitle">Four friends, 48 teams, one winner takes the pot. Live results, automatically updated.</p>
+
+  <div class="pot-strip">
+    <div class="pot-stat"><div class="num" id="potTotal">£100</div><div class="lbl">Total Pool</div></div>
+    <div class="pot-stat"><div class="num">4</div><div class="lbl">Players</div></div>
+    <div class="pot-stat"><div class="num">12</div><div class="lbl">Teams Each</div></div>
+  </div>
+
+  <div class="scoreboard">
+    <span class="live-dot"></span>
+    <span id="scoreboardText">Connecting to live scores…</span>
+  </div>
+</header>
+
+<main>
+  <div class="champion-banner" id="championBanner">
+    <div class="trophy">🏆</div>
+    <div class="name" id="championName"></div>
+    <div class="detail">Wins the full £<span id="championPot"></span> pot</div>
+  </div>
+
+  <div class="section-label">
+    <div class="num">01</div>
+    <h2>The Pool</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="players-grid" id="playersGrid">
+    <div class="loading">Loading sweepstake…</div>
+  </div>
+</main>
+
+<footer>
+  Built for the lads. Data refreshes automatically every few minutes via football-data.org. &middot;
+  <a href="https://kkmortgagesolutions.com" target="_blank">kkmortgagesolutions.com</a>
+</footer>
+
+<script>
+  // Point this at your Railway backend once deployed
+  const API_URL = "https://YOUR-RAILWAY-APP.up.railway.app/api/sweepstake";
+  const REFRESH_MS = 3 * 60 * 1000; // 3 minutes
+
+  function escapeHtml(s){
+    return (s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function renderError(msg){
+    document.getElementById('playersGrid').innerHTML =
+      `<div class="error-box">Couldn't load live data: ${escapeHtml(msg)}<br><span style="font-size:11px;">Check back shortly — refresh happens automatically.</span></div>`;
+    document.getElementById('scoreboardText').textContent = "Live scores unavailable right now";
+  }
+
+  function teamRowHtml(t){
+    let cls = "team-row";
+    if (t.champion) cls += " champion-team";
+    else if (t.eliminated) cls += " eliminated";
+    let stageLabel = t.champion ? "Champions" : t.stage_label;
+    return `<div class="${cls}">
+      <span class="team-name">${escapeHtml(t.team)}</span>
+      <span class="team-stage">${t.champion ? "👑 " : ""}${escapeHtml(stageLabel)}</span>
+    </div>`;
+  }
+
+  function playerCardHtml(p, maxAlive){
+    let cardCls = "player-card";
+    if (p.is_champion) cardCls += " champion";
+    else if (p.alive_count === maxAlive && maxAlive > 0) cardCls += " leader";
+
+    let badge = p.is_champion
+      ? `<span class="player-badge gold">🏆 Winner</span>`
+      : `<span class="player-badge">${p.alive_count} of ${p.teams.length} alive</span>`;
+
+    let segs = p.teams.map(t => {
+      let segCls = t.eliminated ? "seg out" : "seg alive";
+      return `<div class="${segCls}"></div>`;
+    }).join("");
+
+    let teamsHtml = [...p.teams]
+      .sort((a,b) => (a.eliminated === b.eliminated) ? 0 : (a.eliminated ? 1 : -1))
+      .map(teamRowHtml).join("");
+
+    return `<div class="${cardCls}">
+      <div class="player-head">
+        <div class="player-name">${escapeHtml(p.name)}</div>
+        ${badge}
+      </div>
+      <div class="alive-meter">${segs}</div>
+      <div class="team-list">${teamsHtml}</div>
+    </div>`;
+  }
+
+  async function loadData(){
+    try{
+      const res = await fetch(API_URL, { cache: "no-store" });
+      const data = await res.json();
+      if (data.error){ renderError(data.error); return; }
+
+      document.getElementById('potTotal').textContent = `£${data.total_pool}`;
+
+      const players = Object.values(data.players);
+      const maxAlive = Math.max(...players.map(p => p.alive_count));
+
+      const grid = document.getElementById('playersGrid');
+      grid.innerHTML = players
+        .sort((a,b) => b.alive_count - a.alive_count)
+        .map(p => playerCardHtml(p, maxAlive))
+        .join("");
+
+      const banner = document.getElementById('championBanner');
+      if (data.winner){
+        banner.classList.add('show');
+        document.getElementById('championName').textContent = `${data.winner} wins it all!`;
+        document.getElementById('championPot').textContent = data.total_pool;
+      } else {
+        banner.classList.remove('show');
+      }
+
+      const updated = new Date(data.generated_at * 1000);
+      document.getElementById('scoreboardText').textContent =
+        `Last updated ${updated.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} · refreshes automatically`;
+    } catch(err){
+      renderError(err.message || "network error");
+    }
+  }
+
+  loadData();
+  setInterval(loadData, REFRESH_MS);
+</script>
+
+</body>
+</html>

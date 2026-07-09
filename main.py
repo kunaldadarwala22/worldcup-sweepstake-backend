@@ -1,6 +1,7 @@
 import os
 import time
 import asyncio
+import datetime
 import logging
 from typing import Optional
 
@@ -9,27 +10,22 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("worldcup-sweepstake")
+logger = logging.getLogger("kk-sweepstake")
 
 FOOTBALL_DATA_TOKEN = os.environ.get("FOOTBALL_DATA_TOKEN", "")
 BASE_URL = "https://api.football-data.org/v4/competitions/WC"
-CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "120"))  # 2 min default
+CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL_SECONDS", "120"))
 
-app = FastAPI(title="World Cup Sweepstake API")
+app = FastAPI(title="KK World Cup Sweepstake API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten to your domain after deploy if you like
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ---------------------------------------------------------------------------
-# Sweepstake configuration — team name MUST match football-data.org's team
-# "name" field as closely as possible. We normalise both sides before
-# matching so small differences (United States vs USA) don't break things.
-# ---------------------------------------------------------------------------
 POOL_PER_PERSON = 25
 PLAYERS = {
     "Liam": [
@@ -52,7 +48,6 @@ PLAYERS = {
     ],
 }
 
-# Aliases: our team name -> list of possible names football-data.org might use
 ALIASES = {
     "South Korea": ["South Korea", "Korea Republic"],
     "United States": ["United States", "USA"],
@@ -60,7 +55,7 @@ ALIASES = {
     "Czechia": ["Czechia", "Czech Republic"],
     "Bosnia & Herzegovina": ["Bosnia & Herzegovina", "Bosnia and Herzegovina"],
     "DR Congo": ["DR Congo", "Congo DR", "DR Kongo"],
-    "Cape Verde": ["Cape Verde", "Cabo Verde"],
+    "Cape Verde": ["Cape Verde", "Cabo Verde", "Cape Verde Islands"],
     "Curacao": ["Curacao", "Curaçao"],
 }
 
@@ -82,16 +77,13 @@ STAGE_LABELS = {
 def normalise(name: Optional[str]) -> str:
     if not name:
         return ""
-    return name.lower().replace("'", "").replace("’", "").replace("-", " ").replace(".", "").strip()
+    return name.lower().replace("'", "").replace("'", "").replace("-", " ").replace(".", "").strip()
 
 
 def build_alias_lookup():
-    """Map every normalised alias -> our canonical team name."""
     lookup = {}
-    for canonical, names in PLAYERS.items():
-        pass
-    for canonical_list in PLAYERS.values():
-        for team in canonical_list:
+    for player, teams in PLAYERS.items():
+        for team in teams:
             lookup[normalise(team)] = team
     for canonical, aliases in ALIASES.items():
         for a in aliases:
@@ -105,6 +97,11 @@ TEAM_TO_PLAYER = {}
 for player, teams in PLAYERS.items():
     for t in teams:
         TEAM_TO_PLAYER[t] = player
+
+
+def resolve_team(name: Optional[str]) -> Optional[str]:
+    return ALIAS_LOOKUP.get(normalise(name))
+
 
 _cache = {"data": None, "ts": 0}
 _cache_lock = asyncio.Lock()
@@ -120,13 +117,9 @@ async def fetch_json(client: httpx.AsyncClient, path: str, params: Optional[dict
     return resp.json()
 
 
-def resolve_team(name: Optional[str]) -> Optional[str]:
-    return ALIAS_LOOKUP.get(normalise(name))
-
-
 async def compute_sweepstake():
     if not FOOTBALL_DATA_TOKEN:
-        raise RuntimeError("FOOTBALL_DATA_TOKEN environment variable not set on the backend")
+        raise RuntimeError("FOOTBALL_DATA_TOKEN environment variable not set")
 
     async with httpx.AsyncClient() as client:
         matches_data, standings_data = await asyncio.gather(
@@ -136,22 +129,21 @@ async def compute_sweepstake():
 
     matches = (matches_data or {}).get("matches", [])
 
-    # Track furthest stage + eliminated flag + record per recognised team
     team_state = {}
-    for team in TEAM_TO_PLAYER:
-        team_state[team] = {
-            "team": team,
-            "player": TEAM_TO_PLAYER[team],
-            "stage": "GROUP_STAGE",
-            "stage_label": STAGE_LABELS["GROUP_STAGE"],
-            "eliminated": False,
-            "champion": False,
-            "played": 0, "won": 0, "drawn": 0, "lost": 0,
-            "goals_for": 0, "goals_against": 0, "points": 0,
-            "group": None,
-        }
+    for player, teams in PLAYERS.items():
+        for team in teams:
+            team_state[team] = {
+                "team": team,
+                "player": player,
+                "stage": "GROUP_STAGE",
+                "stage_label": STAGE_LABELS["GROUP_STAGE"],
+                "eliminated": False,
+                "champion": False,
+                "played": 0, "won": 0, "drawn": 0, "lost": 0,
+                "goals_for": 0, "goals_against": 0, "points": 0,
+                "group": None,
+            }
 
-    # Fold in group standings (played/won/drawn/lost/points/group letter)
     for group_table in (standings_data or {}).get("standings", []):
         group_name = group_table.get("group")
         for row in group_table.get("table", []):
@@ -168,8 +160,6 @@ async def compute_sweepstake():
                 st["points"] = row.get("points", 0)
                 st["group"] = group_name
 
-    # Walk matches in chronological order, advance furthest stage reached,
-    # and mark the loser of any finished knockout match as eliminated.
     matches_sorted = sorted(matches, key=lambda m: m.get("utcDate", ""))
     final_match = None
 
@@ -189,19 +179,15 @@ async def compute_sweepstake():
 
         if stage != "GROUP_STAGE" and status == "FINISHED" and home and away:
             score = m.get("score", {})
-            full_time = score.get("fullTime", {})
-            winner = score.get("winner")  # HOME_TEAM / AWAY_TEAM / DRAW
+            winner = score.get("winner")
             home_in = home in team_state
             away_in = away in team_state
-
             loser = None
             if winner == "HOME_TEAM":
                 loser = away if away_in else None
             elif winner == "AWAY_TEAM":
                 loser = home if home_in else None
             else:
-                # Draws shouldn't happen in knockout (penalties resolve it);
-                # fall back to penalty shootout winner if present
                 pens = score.get("penalties", {})
                 if pens.get("homeTeam") is not None and pens.get("awayTeam") is not None:
                     if pens["homeTeam"] > pens["awayTeam"]:
@@ -215,7 +201,6 @@ async def compute_sweepstake():
             if stage == "FINAL":
                 final_match = m
 
-    # Determine champion from the final, if played
     if final_match and final_match.get("status") == "FINISHED":
         score = final_match.get("score", {})
         winner = score.get("winner")
@@ -234,14 +219,18 @@ async def compute_sweepstake():
             team_state[champ]["champion"] = True
             team_state[champ]["eliminated"] = False
 
-    # Build "matches today" list with scores + which player owns each team
-    import datetime
-    today_str = datetime.datetime.utcnow().strftime("%Y-%m-%d")
-    matches_today = []
+    # Matches over the next 4 days (today inclusive)
+    today = datetime.datetime.utcnow().date()
+    cutoff = today + datetime.timedelta(days=4)
+    matches_upcoming = {}
     for m in matches_sorted:
         utc_date = m.get("utcDate", "")
-        if not utc_date.startswith(today_str):
+        if not utc_date:
             continue
+        match_date = datetime.datetime.fromisoformat(utc_date.replace("Z", "+00:00")).date()
+        if match_date < today or match_date >= cutoff:
+            continue
+        date_str = match_date.isoformat()
         home_name_raw = (m.get("homeTeam") or {}).get("name", "TBD")
         away_name_raw = (m.get("awayTeam") or {}).get("name", "TBD")
         home_resolved = resolve_team(home_name_raw)
@@ -249,7 +238,7 @@ async def compute_sweepstake():
         score = m.get("score", {})
         full_time = score.get("fullTime", {})
         status = m.get("status", "SCHEDULED")
-        matches_today.append({
+        entry = {
             "kickoff": utc_date,
             "stage": m.get("stage"),
             "stage_label": STAGE_LABELS.get(m.get("stage"), m.get("stage")),
@@ -260,6 +249,37 @@ async def compute_sweepstake():
             "away_owner": TEAM_TO_PLAYER.get(away_resolved),
             "home_score": full_time.get("home"),
             "away_score": full_time.get("away"),
+        }
+        matches_upcoming.setdefault(date_str, []).append(entry)
+
+    # Knockout bracket
+    bracket = {}
+    for stage in ["LAST_32", "LAST_16", "QUARTER_FINALS", "SEMI_FINALS", "THIRD_PLACE", "FINAL"]:
+        bracket[stage] = []
+    for m in matches_sorted:
+        stage = m.get("stage", "")
+        if stage not in bracket:
+            continue
+        home_name_raw = (m.get("homeTeam") or {}).get("name", "TBD")
+        away_name_raw = (m.get("awayTeam") or {}).get("name", "TBD")
+        home_resolved = resolve_team(home_name_raw)
+        away_resolved = resolve_team(away_name_raw)
+        score = m.get("score", {})
+        ft = score.get("fullTime", {})
+        pens = score.get("penalties", {})
+        winner = score.get("winner")
+        bracket[stage].append({
+            "kickoff": m.get("utcDate"),
+            "status": m.get("status", "SCHEDULED"),
+            "home_team": home_name_raw,
+            "away_team": away_name_raw,
+            "home_owner": TEAM_TO_PLAYER.get(home_resolved),
+            "away_owner": TEAM_TO_PLAYER.get(away_resolved),
+            "home_score": ft.get("home"),
+            "away_score": ft.get("away"),
+            "home_pens": pens.get("homeTeam"),
+            "away_pens": pens.get("awayTeam"),
+            "winner": winner,
         })
 
     # Build per-player summary
@@ -288,7 +308,8 @@ async def compute_sweepstake():
         "total_pool": total_pool,
         "currency": "GBP",
         "winner": overall_champion_player["name"] if overall_champion_player else None,
-        "matches_today": matches_today,
+        "matches_upcoming": matches_upcoming,
+        "bracket": bracket,
         "players": players_out,
     }
 
@@ -316,4 +337,4 @@ async def health():
 
 @app.get("/")
 async def root():
-    return {"message": "World Cup Sweepstake API. See /api/sweepstake"}
+    return {"message": "KK World Cup Sweepstake API. See /api/sweepstake"}
